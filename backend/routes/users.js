@@ -73,9 +73,17 @@ router.get('/stats', auth, async (req, res) => {
                 : { recyclerId: req.user._id }
         ).populate('materials.materialId');
 
+        // Calculate total value from pickups
+        const totalValue = pickups.reduce((sum, pickup) => {
+            return sum + pickup.materials.reduce((materialSum, material) => {
+                return materialSum + (material.quantity * material.priceAtPickup || 0);
+            }, 0);
+        }, 0);
+
         const stats = {
             totalPickups: pickups.length,
             totalWeight: pickups.reduce((sum, p) => sum + (p.totalWeight || 0), 0),
+            totalValue,
             rating: user.rating || 0,
             totalRatings: user.totalRatings || 0,
             recentActivity: pickups

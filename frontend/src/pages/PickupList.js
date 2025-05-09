@@ -90,11 +90,38 @@ const PickupList = () => {
         reject(new Error('Geolocation is not supported by your browser'));
         return;
       }
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
+
+      // First try with high accuracy
+      const highAccuracyOptions = {
         enableHighAccuracy: true,
-        timeout: 5000,
+        timeout: 10000,  // 10 seconds
         maximumAge: 0
-      });
+      };
+
+      // Fallback options with lower accuracy
+      const fallbackOptions = {
+        enableHighAccuracy: false,
+        timeout: 15000,  // 15 seconds
+        maximumAge: 30000  // Accept positions up to 30 seconds old
+      };
+
+      // Try high accuracy first
+      navigator.geolocation.getCurrentPosition(
+        resolve,
+        (error) => {
+          console.log('High accuracy location failed, trying fallback:', error);
+          // If high accuracy fails, try with lower accuracy
+          navigator.geolocation.getCurrentPosition(
+            resolve,
+            (fallbackError) => {
+              console.error('Both location attempts failed:', fallbackError);
+              reject(fallbackError);
+            },
+            fallbackOptions
+          );
+        },
+        highAccuracyOptions
+      );
     });
   };
 
@@ -305,7 +332,7 @@ const PickupList = () => {
                         {material.materialId?.name || 'Unknown Material'}
                       </Typography>
                       <Typography variant="body2">
-                        {material.quantity} kg × Rs {material.priceAtPickup?.toFixed(2) || material.materialId?.pricePerKg?.toFixed(2) || '0.00'}/kg = Rs {((material.quantity || 0) * (material.priceAtPickup || material.materialId?.pricePerKg || 0)).toFixed(2)}
+                        {material.quantity.toFixed(2)} kg × Rs {material.priceAtPickup?.toFixed(2) || material.materialId?.pricePerKg?.toFixed(2) || '0.00'}/kg = Rs {((material.quantity || 0) * (material.priceAtPickup || material.materialId?.pricePerKg || 0)).toFixed(2)}
                       </Typography>
                     </Box>
                   ))}
@@ -315,7 +342,7 @@ const PickupList = () => {
                       Total Weight:
                     </Typography>
                     <Typography variant="subtitle2">
-                      {pickup.totalWeight || 0} kg
+                      {(pickup.totalWeight || 0).toFixed(2)} kg
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>

@@ -88,6 +88,8 @@ const getDashboardData = async (req, res) => {
       const dateStr = date.toISOString().split('T')[0];
       dateMap[dateStr] = {
         date: dateStr,
+        count: 0,
+        value: 0,
         recyclingVolume: 0,
         environmentalImpact: {
           co2Reduced: 0,
@@ -104,6 +106,8 @@ const getDashboardData = async (req, res) => {
       .forEach(pickup => {
         const date = pickup.createdAt.toISOString().split('T')[0];
         if (dateMap[date]) {
+          dateMap[date].count += 1;
+          dateMap[date].value += pickup.totalValue || 0;
           dateMap[date].recyclingVolume += pickup.totalWeight || 0;
           
           // Add environmental impact for this pickup
@@ -129,15 +133,158 @@ const getDashboardData = async (req, res) => {
       ? await User.countDocuments({ isVerified: true })
       : 1; // For regular users, just show 1 (themselves)
 
-    res.json({
+    // Get user growth data for the last 30 days
+    const userGrowth = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    console.log('Calculating user growth from:', today.toISOString());
+
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+      
+      const count = await User.countDocuments({
+        createdAt: { $gte: startOfDay, $lte: endOfDay }
+      });
+      
+      console.log(`Users created on ${startOfDay.toISOString()}: ${count}`);
+      
+      userGrowth.push({
+        date: startOfDay.toISOString().split('T')[0],
+        count
+      });
+    }
+
+    // Get top recyclers with proper aggregation
+    console.log('Fetching top recyclers...');
+    const topRecyclers = await User.aggregate([
+      { 
+        $match: { 
+          userType: 'recycler',
+          isVerified: true 
+        } 
+      },
+      {
+        $lookup: {
+          from: 'pickups',
+          localField: '_id',
+          foreignField: 'recyclerId',
+          as: 'pickups'
+        }
+      },
+      {
+        $addFields: {
+          pickupCount: { $size: '$pickups' },
+          totalWeight: {
+            $reduce: {
+              input: '$pickups',
+              initialValue: 0,
+              in: { $add: ['$$value', { $ifNull: ['$$this.totalWeight', 0] }] }
+            }
+          },
+          totalValue: {
+            $reduce: {
+              input: '$pickups',
+              initialValue: 0,
+              in: { $add: ['$$value', { $ifNull: ['$$this.totalValue', 0] }] }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          pickupCount: 1,
+          totalWeight: 1,
+          totalValue: 1
+        }
+      },
+      { $match: { pickupCount: { $gt: 0 } } },
+      { $sort: { totalWeight: -1 } },
+      { $limit: 5 }
+    ]);
+
+    console.log('Top Recyclers found:', topRecyclers.length);
+    console.log('Top Recyclers data:', JSON.stringify(topRecyclers, null, 2));
+
+    // Get top households with proper aggregation
+    console.log('Fetching top households...');
+    const topHouseholds = await User.aggregate([
+      { 
+        $match: { 
+          userType: 'household',
+          isVerified: true 
+        } 
+      },
+      {
+        $lookup: {
+          from: 'pickups',
+          localField: '_id',
+          foreignField: 'userId',
+          as: 'pickups'
+        }
+      },
+      {
+        $addFields: {
+          pickupCount: { $size: '$pickups' },
+          totalWeight: {
+            $reduce: {
+              input: '$pickups',
+              initialValue: 0,
+              in: { $add: ['$$value', { $ifNull: ['$$this.totalWeight', 0] }] }
+            }
+          },
+          totalValue: {
+            $reduce: {
+              input: '$pickups',
+              initialValue: 0,
+              in: { $add: ['$$value', { $ifNull: ['$$this.totalValue', 0] }] }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          pickupCount: 1,
+          totalWeight: 1,
+          totalValue: 1
+        }
+      },
+      { $match: { pickupCount: { $gt: 0 } } },
+      { $sort: { totalWeight: -1 } },
+      { $limit: 5 }
+    ]);
+
+    console.log('Top Households found:', topHouseholds.length);
+    console.log('Top Households data:', JSON.stringify(topHouseholds, null, 2));
+
+    // Verify data before sending response
+    const response = {
       analytics,
       totalPickups: pickups.length,
       activeUsers,
       totalRecyclingVolume,
       environmentalImpact,
       marketPrices,
-      isAdmin: req.user.role === 'admin'
+      isAdmin: req.user.role === 'admin',
+      userGrowth: userGrowth || [],
+      topRecyclers: topRecyclers || [],
+      topHouseholds: topHouseholds || []
+    };
+
+    console.log('Response data summary:', {
+      userGrowthLength: response.userGrowth.length,
+      topRecyclersLength: response.topRecyclers.length,
+      topHouseholdsLength: response.topHouseholds.length
     });
+
+    res.json(response);
   } catch (error) {
     console.error('Analytics error:', error);
     res.status(500).json({ message: error.message });

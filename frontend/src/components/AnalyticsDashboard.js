@@ -12,7 +12,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper
+  Paper,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  ButtonGroup,
+  Button
 } from '@mui/material';
 import {
   BarChart,
@@ -33,11 +39,26 @@ const AnalyticsDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedMaterial, setSelectedMaterial] = useState('Plastic Bottles');
+  const [selectedMetric, setSelectedMetric] = useState('recyclingVolume');
+  const [timeframe, setTimeframe] = useState('30');
+
+  // Function to sort data chronologically
+  const sortDataChronologically = (data) => {
+    if (!data) return [];
+    return [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
+
+  // Function to format date for display
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await api.get('/api/analytics/dashboard');
+        const response = await api.get(`/api/analytics/dashboard?days=${timeframe}`);
         console.log('Analytics data:', response.data);
         setData(response.data);
         setLoading(false);
@@ -49,7 +70,7 @@ const AnalyticsDashboard = () => {
     };
 
     fetchData();
-  }, []);
+  }, [timeframe]);
 
   if (loading) {
     return (
@@ -67,14 +88,64 @@ const AnalyticsDashboard = () => {
     );
   }
 
+  // Sort analytics data chronologically
+  const sortedAnalytics = sortDataChronologically(data?.analytics);
+  // Sort market price history data chronologically
+  const sortedMarketPrices = data?.marketPrices ? 
+    Object.fromEntries(
+      Object.entries(data.marketPrices).map(([material, priceData]) => [
+        material,
+        { ...priceData, history: sortDataChronologically(priceData.history) }
+      ])
+    ) : {};
+
+  const metrics = [
+    { value: 'recyclingVolume', label: 'Recycling Volume' },
+    { value: 'environmentalImpact.co2Reduced', label: 'CO2 Reduced' },
+    { value: 'environmentalImpact.treesSaved', label: 'Trees Saved' },
+    { value: 'environmentalImpact.waterSaved', label: 'Water Saved' },
+    { value: 'environmentalImpact.energySaved', label: 'Energy Saved' }
+  ];
+
+  const timeframes = [
+    { value: '7', label: '7 Days' },
+    { value: '30', label: '30 Days' },
+    { value: '90', label: '90 Days' },
+    { value: '365', label: '1 Year' },
+    {value: '1826', label: '5 Years' }
+  ];
+
+  const getMetricLabel = (metric) => {
+    const metricObj = metrics.find(m => m.value === metric);
+    return metricObj ? metricObj.label : metric;
+  };
+
+  const getMetricUnit = (metric) => {
+    switch (metric) {
+      case 'recyclingVolume':
+        return 'kg';
+      case 'environmentalImpact.co2Reduced':
+        return 'kg';
+      case 'environmentalImpact.treesSaved':
+        return 'trees';
+      case 'environmentalImpact.waterSaved':
+        return 'L';
+      case 'environmentalImpact.energySaved':
+        return 'kWh';
+      default:
+        return '';
+    }
+  };
+
   return (
     <Box p={3}>
       <Typography variant="h4" gutterBottom>
         {data?.isAdmin ? 'Platform Analytics' : 'Your Recycling Analytics'}
       </Typography>
-      <Grid container spacing={3}>
-        {/* Overview Cards */}
-        <Grid item xs={12} md={4}>
+
+      {/* Stats Cards */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -87,7 +158,33 @@ const AnalyticsDashboard = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                {data?.isAdmin ? 'Total Revenue' : 'Your Revenue'}
+              </Typography>
+              <Typography variant="h3" color="primary">
+                Rs {(data?.totalRevenue || 0).toFixed(2)}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={3}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                {data?.isAdmin ? 'Total Recycling Volume' : 'Your Recycling Volume'}
+              </Typography>
+              <Typography variant="h3" color="primary">
+                {(data?.totalRecyclingVolume || 0).toFixed(2)} kg
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -100,212 +197,208 @@ const AnalyticsDashboard = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        {/* Environmental Impact Cards */}
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                {data?.isAdmin ? 'Total Recycling Volume' : 'Your Recycling Volume'}
+                {data?.isAdmin ? 'Total CO2 Reduced' : 'Your CO2 Reduced'}
               </Typography>
               <Typography variant="h3" color="primary">
-                {data?.totalRecyclingVolume || 0} kg
+                {(data?.totalCO2Reduced || 0).toFixed(2)} kg
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Recycling Trends Chart */}
-        <Grid item xs={12}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                {data?.isAdmin ? 'Platform Recycling Trends' : 'Your Recycling Trends'} (Last 30 Days)
+                {data?.isAdmin ? 'Total Trees Saved' : 'Your Trees Saved'}
               </Typography>
-              <Box height={300}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={data?.analytics}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="recyclingVolume" stroke="#8884d8" name="Recycling Volume (kg)" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Box>
+              <Typography variant="h3" color="primary">
+                {(data?.totalTreesSaved || 0).toFixed(2)}
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Market Trends */}
-        <Grid item xs={12}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                Market Trends
+                {data?.isAdmin ? 'Total Water Saved' : 'Your Water Saved'}
               </Typography>
-              <Grid container spacing={3}>
-                {data?.marketPrices && Object.entries(data.marketPrices).map(([material, priceData]) => (
-                  <Grid item xs={12} md={6} key={material}>
-                    <Box height={300}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={priceData.history}
-                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <Tooltip 
-                            formatter={(value, name, props) => {
-                              if (name === 'price') return [`Rs${value.toFixed(2)}`, 'Price'];
-                              if (name === 'supply') return [`${value}%`, 'Supply Level'];
-                              if (name === 'demand') return [`${value}%`, 'Demand Level'];
-                              return [value, name];
-                            }}
-                          />
-                          <Legend />
-                          <Line 
-                            type="monotone" 
-                            dataKey="price" 
-                            stroke="#8884d8" 
-                            name="Price" 
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="factors.supply" 
-                            stroke="#82ca9d" 
-                            name="Supply Level" 
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="factors.demand" 
-                            stroke="#ff7300" 
-                            name="Demand Level" 
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                      <Typography variant="subtitle1" align="center">
-                        {material}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
+              <Typography variant="h3" color="primary">
+                {(data?.totalWaterSaved || 0).toFixed(2)} L
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Environmental Impact */}
-        <Grid item xs={12}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                {data?.isAdmin ? 'Platform Environmental Impact' : 'Your Environmental Impact'}
+                {data?.isAdmin ? 'Total Energy Saved' : 'Your Energy Saved'}
               </Typography>
-              <Grid container spacing={3}>
-                {/* CO2 Reduced */}
-                <Grid item xs={12} md={6}>
-                  <Box height={300}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={data?.analytics}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`${value.toFixed(2)} kg`, 'CO2 Reduced']} />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="environmentalImpact.co2Reduced" 
-                          stroke="#8884d8" 
-                          name="CO2 Reduced (kg)" 
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </Grid>
-
-                {/* Trees Saved */}
-                <Grid item xs={12} md={6}>
-                  <Box height={300}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={data?.analytics}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`${value.toFixed(2)} trees`, 'Trees Saved']} />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="environmentalImpact.treesSaved" 
-                          stroke="#82ca9d" 
-                          name="Trees Saved" 
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </Grid>
-
-                {/* Water Saved */}
-                <Grid item xs={12} md={6}>
-                  <Box height={300}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={data?.analytics}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`${value.toFixed(2)} L`, 'Water Saved']} />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="environmentalImpact.waterSaved" 
-                          stroke="#0088FE" 
-                          name="Water Saved (L)" 
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </Grid>
-
-                {/* Energy Saved */}
-                <Grid item xs={12} md={6}>
-                  <Box height={300}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={data?.analytics}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`${value.toFixed(2)} kWh`, 'Energy Saved']} />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="environmentalImpact.energySaved" 
-                          stroke="#FF8042" 
-                          name="Energy Saved (kWh)" 
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </Grid>
-              </Grid>
+              <Typography variant="h3" color="primary">
+                {(data?.totalEnergySaved || 0).toFixed(2)} kWh
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      {/* Market Price Trends */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Market Price Trends
+          </Typography>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Material</InputLabel>
+                <Select
+                  value={selectedMaterial}
+                  label="Material"
+                  onChange={(e) => setSelectedMaterial(e.target.value)}
+                >
+                  {data?.marketPrices && Object.keys(data.marketPrices).map(material => (
+                    <MenuItem key={material} value={material}>
+                      {material}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <ButtonGroup fullWidth>
+                {timeframes.map(tf => (
+                  <Button
+                    key={tf.value}
+                    variant={timeframe === tf.value ? 'contained' : 'outlined'}
+                    onClick={() => setTimeframe(tf.value)}
+                  >
+                    {tf.label}
+                  </Button>
+                ))}
+              </ButtonGroup>
+            </Grid>
+          </Grid>
+          <Box height={400}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={selectedMaterial === 'all' 
+                  ? Object.values(data?.marketPrices || {}).flatMap(priceData => 
+                      priceData.history.map(entry => ({
+                        ...entry,
+                        material: priceData.material
+                      }))
+                    )
+                  : data?.marketPrices?.[selectedMaterial]?.history || []
+                }
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="date" 
+                  tickFormatter={formatDate}
+                  interval="preserveStartEnd"
+                />
+                <YAxis />
+                <Tooltip 
+                  labelFormatter={formatDate}
+                  formatter={(value, name) => {
+                    if (name === 'price') return [`Rs${value.toFixed(2)}`, 'Price'];
+                    if (name === 'factors.supply') return [`${value.toFixed(2)}%`, 'Supply Level'];
+                    if (name === 'factors.demand') return [`${value.toFixed(2)}%`, 'Demand Level'];
+                    return [value, name];
+                  }}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="price" 
+                  stroke="#8884d8" 
+                  name="Price" 
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Recycling Impact */}
+      <Card>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            {data?.isAdmin ? 'Platform Recycling Impact' : 'Your Recycling Impact'}
+          </Typography>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Metric</InputLabel>
+                <Select
+                  value={selectedMetric}
+                  label="Metric"
+                  onChange={(e) => setSelectedMetric(e.target.value)}
+                >
+                  {metrics.map(metric => (
+                    <MenuItem key={metric.value} value={metric.value}>
+                      {metric.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <ButtonGroup fullWidth>
+                {timeframes.map(tf => (
+                  <Button
+                    key={tf.value}
+                    variant={timeframe === tf.value ? 'contained' : 'outlined'}
+                    onClick={() => setTimeframe(tf.value)}
+                  >
+                    {tf.label}
+                  </Button>
+                ))}
+              </ButtonGroup>
+            </Grid>
+          </Grid>
+          <Box height={400}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={data?.analytics || []}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="date" 
+                  tickFormatter={formatDate}
+                  interval="preserveStartEnd"
+                />
+                <YAxis />
+                <Tooltip 
+                  labelFormatter={formatDate}
+                  formatter={(value) => [`${value.toFixed(2)} ${getMetricUnit(selectedMetric)}`, getMetricLabel(selectedMetric)]}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey={selectedMetric.includes('.') ? selectedMetric.split('.')[1] : selectedMetric}
+                  stroke="#8884d8" 
+                  name={getMetricLabel(selectedMetric)}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </Box>
+        </CardContent>
+      </Card>
     </Box>
   );
 };

@@ -150,7 +150,7 @@ const Dashboard = () => {
       </Typography>
       <Grid container spacing={3}>
         {/* Stats Cards */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
@@ -162,19 +162,31 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
+          <Card>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Total Revenue
+              </Typography>
+              <Typography variant="h4">
+                Rs {stats.totalValue?.toFixed(2) || '0.00'}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Total Weight
               </Typography>
               <Typography variant="h4">
-                {stats.totalWeight} kg
+                {stats.totalWeight.toFixed(2)} kg
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>

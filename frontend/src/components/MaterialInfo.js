@@ -63,9 +63,9 @@ const MaterialInfo = () => {
     const priceChange = ((marketPrice.currentPrice - marketPrice.basePrice) / marketPrice.basePrice) * 100;
     
     if (priceChange > 0) {
-      return <Chip label={`↑ ${priceChange.toFixed(1)}%`} color="success" size="small" />;
+      return <Chip label={`↑ ${priceChange.toFixed(2)}%`} color="success" size="small" />;
     } else if (priceChange < 0) {
-      return <Chip label={`↓ ${Math.abs(priceChange).toFixed(1)}%`} color="error" size="small" />;
+      return <Chip label={`↓ ${Math.abs(priceChange).toFixed(2)}%`} color="error" size="small" />;
     }
     return null;
   };
@@ -140,13 +140,13 @@ const MaterialInfo = () => {
                               Market Factors:
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              • Supply Level: {marketPrice.supplyLevel.toFixed(1)}
+                              • Supply Level: {marketPrice.supplyLevel.toFixed(2)}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              • Demand Level: {marketPrice.demandLevel.toFixed(1)}
+                              • Demand Level: {marketPrice.demandLevel.toFixed(2)}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              • Seasonal Adjustment: {(marketPrice.priceHistory[marketPrice.priceHistory.length - 1]?.factors?.seasonal * 100).toFixed(1)}%
+                              • Seasonal Adjustment: {(marketPrice.priceHistory[marketPrice.priceHistory.length - 1]?.factors?.seasonal * 100).toFixed(2)}%
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                               • Last Updated: {new Date(marketPrice.lastUpdated).toLocaleString()}
@@ -160,16 +160,16 @@ const MaterialInfo = () => {
                           Environmental Impact (per kg):
                         </Typography>
                         <Typography variant="body2">
-                          • CO2 Reduced: {material.environmentalImpact.co2Reduced} kg
+                          • CO2 Reduced: {material.environmentalImpact.co2Reduced.toFixed(2)} kg
                         </Typography>
                         <Typography variant="body2">
-                          • Water Saved: {material.environmentalImpact.waterSaved} liters
+                          • Water Saved: {material.environmentalImpact.waterSaved.toFixed(2)} liters
                         </Typography>
                         <Typography variant="body2">
-                          • Trees Saved: {material.environmentalImpact.treesSaved} trees
+                          • Trees Saved: {material.environmentalImpact.treesSaved.toFixed(2)} trees
                         </Typography>
                         <Typography variant="body2">
-                          • Energy Saved: {material.environmentalImpact.energySaved} kWh
+                          • Energy Saved: {material.environmentalImpact.energySaved.toFixed(2)} kWh
                         </Typography>
                       </Box>
                     )}

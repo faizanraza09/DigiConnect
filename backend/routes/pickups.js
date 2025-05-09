@@ -128,6 +128,7 @@ router.post('/', [
         });
 
         await pickup.save();
+        await MarketPrice.updatePriceForPickup(pickup);
         res.status(201).json(pickup);
     } catch (error) {
         console.error(error);
@@ -200,6 +201,7 @@ router.patch('/:id/complete', [
         recycler.points += pickup.totalValue;
         await recycler.save();
 
+        await MarketPrice.updatePriceForPickup(pickup);
         res.json(pickup);
     } catch (error) {
         console.error(error);

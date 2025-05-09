@@ -50,20 +50,21 @@ marketPriceSchema.methods.calculateNewPrice = async function() {
 
     // Supply and demand impact with material-specific sensitivity
     const supplyDemandFactor = 1 + (
-        (this.demandLevel - this.supplyLevel) / 200 * 
-        (material.marketFactors.demandSensitivity + material.marketFactors.supplySensitivity) / 2
+        ((this.demandLevel - this.supplyLevel) / 100) * 
+        ((material.marketFactors.demandSensitivity + material.marketFactors.supplySensitivity) / 2)
     );
     
     // Get seasonal factor from material's seasonal adjustments
     const month = new Date().getMonth().toString();
     const seasonalFactor = material.marketFactors.seasonalAdjustments.get(month) || 1.0;
     
-    // Calculate new price
+    // Calculate new price with all factors
     const newPrice = this.basePrice * supplyDemandFactor * seasonalFactor;
     
-    // Add to price history
+    // Add to price history with all factors
     this.priceHistory.push({
         price: newPrice,
+        date: new Date(),
         factors: {
             supply: this.supplyLevel,
             demand: this.demandLevel,
@@ -76,6 +77,7 @@ marketPriceSchema.methods.calculateNewPrice = async function() {
         this.priceHistory.shift();
     }
     
+    // Update current price and last updated timestamp
     this.currentPrice = newPrice;
     this.lastUpdated = new Date();
     

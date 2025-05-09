@@ -171,7 +171,7 @@ const PickupDetails = () => {
               Details
             </Typography>
             <Typography variant="body1">
-              Size: {pickup.quantity}
+              Size: {pickup.quantity.toFixed(2)} kg
             </Typography>
             <Typography variant="body1">
               Address: {pickup.location.address}
